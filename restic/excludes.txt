@@ -1,0 +1,2 @@
+$HOME/volumes/webdav/appletv
+.npm
