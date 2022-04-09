@@ -96,21 +96,6 @@ services:
     networks:
       - intern
 
-  adguard:
-    container_name: adguard
-    restart: always
-    image: adguard/adguardhome
-    ports:
-      - 53:53/tcp
-      - 53:53/udp
-      - 4000:4000/tcp
-    volumes:
-      - $HOME/volumes/adguard/data:/opt/adguardhome/work
-      - $HOME/volumes/adguard/config:/opt/adguardhome/conf
-    networks:
-      - web
-      - intern
-
   grafana:
     container_name: grafana
     restart: always
