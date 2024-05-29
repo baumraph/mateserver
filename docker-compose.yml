@@ -1,171 +1,165 @@
-version: "3.7"
 services:
   nginx:
     container_name: nginx
-    restart: always
     image: nginx:latest
     ports:
-      - "80:80"
-      - "443:443"
+      - 80:80
+      - 443:443
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - $HOME/volumes/nginx/ssl:/etc/ssl/certs:ro
-      - ./nginx/data:/usr/share/nginx/html:ro
-      - ./nginx/config:/etc/nginx/conf.d:ro
+      - ./volumes/nginx/certs:/etc/ssl/certs:ro
+      - ./volumes/nginx/conf:/etc/nginx/conf.d:ro
+    restart: unless-stopped
     networks:
       - web
       - intern
+      - media
 
-  webdav-appletv:
-    container_name: webdav-appletv
-    restart: always
-    build: ./docker/webdav
-    environment:
-      - USERNAME=webdav
-      - PASSWORD=${WEBDAV_APPLETV}
-      - TZ=Europe/Berlin
-    volumes:
-      - $HOME/volumes/webdav/appletv:/media
-    networks:
-      - intern
-    deploy:
-      resources:
-        limits:
-          memory: 128M
+  # ddclient:
+  #   image: lscr.io/linuxserver/ddclient:latest
+  #   container_name: ddclient
+  #   environment:
+  #     - PUID=501
+  #     - PGID=20
+  #     - TZ=Europe/Zurich
+  #   volumes:
+  #     - ./volumes/ddclient:/config
+  #   restart: unless-stopped
 
-  webdav-windows:
-    container_name: webdav-windows
-    restart: always
-    build: ./docker/webdav
+  homer:
+    image: b4bz/homer
+    container_name: homer
     environment:
-      - USERNAME=webdav
-      - PASSWORD=${WEBDAV_WINDOWS}
-      - TZ=Europe/Berlin
+      - INIT_ASSETS=0
+      - PUID=501
+      - PGID=20
     volumes:
-      - $HOME/volumes/webdav/windows:/media
-    networks:
-      - intern
-
-  webdav-macos:
-    container_name: webdav-macos
-    restart: always
-    build: ./docker/webdav
-    environment:
-      - USERNAME=webdav
-      - PASSWORD=${WEBDAV_MACOS}
-      - TZ=Europe/Berlin
-    volumes:
-      - $HOME/volumes/webdav/macos:/media
-    networks:
-      - intern
-
-  deconz:
-    container_name: deconz
-    restart: always
-    image: deconzcommunity/deconz
-    volumes:
-      - $HOME/volumes/deconz:/opt/deCONZ
-    devices:
-      - /dev/ttyACM0
-    environment:
-      - DECONZ_WEB_PORT=80
-      - DECONZ_WS_PORT=443
-      - DEBUG_INFO=1
-      - DEBUG_APS=0
-      - DEBUG_ZCL=0
-      - DEBUG_ZDP=0
-      - DEBUG_OTAU=0
+      - ./volumes/homer:/www/assets
     ports:
-      - 7000:80
-      - 7001:443
-    networks:
-      - intern
-      - web
-
-  node-red:
-    container_name: node-red
-    restart: always
-    image: nodered/node-red:latest
-    environment:
-      - TZ=Europe/Berlin
-    volumes:
-      - $HOME/volumes/node-red:/data
-    ports:
-      - 1880:1880
-    user: "1000"
-    networks:
-      - intern
-
-  grafana:
-    container_name: grafana
-    restart: always
-    image: grafana/grafana
-    volumes:
-      - $HOME/volumes/grafana:/var/lib/grafana
-    environment:
-      - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s:%(http_port)s/grafana
-      - GF_USERS_ALLOW_SIGN_UP=false
-    user: "1000"
-    networks:
-      intern:
-      monitoring:
-
-  node-exporter:
-    container_name: node-exporter
-    restart: always
-    image: prom/node-exporter
-    volumes:
-      - /:/host:ro,rslave
-    networks:
-      monitoring:
-
-  prometheus:
-    container_name: prometheus
-    restart: always
-    image: prom/prometheus:latest
-    volumes:
-      - $HOME/volumes/prometheus/config:/etc/prometheus
-      - $HOME/volumes/prometheus/data:/data/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/data/prometheus'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
-    user: "1000"
-    networks:
-      monitoring:
-
-  cadvisor:
-    container_name: cadvisor
-    restart: always
-    image: gcr.io/cadvisor/cadvisor
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:rw
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-    networks:
-      - monitoring
-  
-  unifi:
-    container_name: unifi
-    restart: always
-    image: lscr.io/linuxserver/unifi-controller
-    environment:
-      - PUID=1000
-      - GUID=1000
-    volumes:
-      - $HOME/volumes/unifi:/config
-    ports:
-      - 3478:3478/udp
-      - 10001:10001/udp
       - 8080:8080
-      - 8443:8443
     networks:
+      - media
       - web
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    environment:
+      - PUID=501
+      - PGID=20
+      - UMASK=002
+      - TZ=Europe/Zurich
+    volumes:
+      - ./volumes/radarr:/config
+      - ./data:/data
+    ports:
+      - "7878:7878"
+    restart: unless-stopped
+    networks:
+      - media
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    environment:
+      - PUID=501
+      - PGID=20
+      - UMASK=002
+      - TZ=Europe/Zurich
+    volumes:
+      - ./volumes/sonarr:/config
+      - ./data:/data
+    ports:
+      - "8989:8989"
+    restart: unless-stopped
+    networks:
+      - media
+
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:latest
+    container_name: lidarr
+    environment:
+      - PUID=501
+      - PGID=20
+      - UMASK=002
+      - TZ=Europe/Zurich
+    volumes:
+      - ./volumes/lidarr:/config
+      - ./data:/data
+    ports:
+      - "8686:8686"
+    restart: unless-stopped
+    networks:
+      - media
+
+  sabnzbd:
+    image: lscr.io/linuxserver/sabnzbd:latest
+    container_name: sabnzbd
+    environment:
+      - PUID=501
+      - PGID=20
+      - UMASK=002
+      - TZ=Europe/Zurich
+    volumes:
+      - ./volumes/sabnzbd:/config
+      - ./data/usenet:/downloads
+    ports:
+      - "9000:8080"
+    restart: unless-stopped
+    networks:
+      - media
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:develop
+    container_name: prowlarr
+    environment:
+      - PUID=501
+      - PGID=20
+      - UMASK=002
+      - TZ=Europe/Zurich
+    volumes:
+      - ./volumes/prowlarr:/config
+    ports:
+      - "9696:9696"
+    restart: unless-stopped
+    networks:
+      - media
+
+  jellyseerr:
+    image: fallenbagel/jellyseerr:latest
+    container_name: jellyseerr
+    environment:
+      - PUID=501
+      - PGID=20
+      - UMASK=002
+      - TZ=Europe/Zurich
+    volumes:
+      - ./volumes/jellyseerr:/app/config
+    ports:
+      - "5055:5055"
+    restart: unless-stopped
+    networks:
+      - media
+
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    environment:
+      - PUID=501
+      - PGID=20
+      - UMASK=002
+      - TZ=Europe/Zurich
+    volumes:
+      - ./volumes/jellyfin:/config
+      - ./data/media:/data
+    ports:
+      - "8096:8096"
+    restart: unless-stopped
+    networks:
+      - media
 
 networks:
   web:
     driver: bridge
   intern:
   monitoring:
+  media:

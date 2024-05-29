@@ -1,2 +1,2 @@
-.env
-restic/config
+volumes
+.DS_Store
